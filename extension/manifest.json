@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Book vs. Film xRay",
+  "version": "1.0",
+  "description": "Compare Netflix scenes to their source books using Claude AI.",
+  "permissions": ["sidePanel", "activeTab", "scripting"],
+  "host_permissions": ["https://*.netflix.com/*", "http://localhost:5001/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://*.netflix.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Book vs. Film xRay"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
