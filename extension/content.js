@@ -1,6 +1,5 @@
 (() => {
   console.log("[BookVsFilm] Content script loaded");
-  const BACKEND_URL = "http://localhost:5000/analyze";
   const SUBTITLE_BUFFER_SECONDS = 180;
 
   let subtitleBuffer = [];
@@ -8,46 +7,128 @@
   let subtitleObserver = null;
   let videoEl = null;
 
+  // --- Platform detection ---
+
+  const PLATFORM = (() => {
+    const h = window.location.hostname;
+    if (h.includes("netflix.com")) return "netflix";
+    if (h.includes("hbomax.com") || h.includes("max.com")) return "hbomax";
+    return "unknown";
+  })();
+
+  // --- Platform configs ---
+
+  const PLATFORM_CONFIG = {
+    netflix: {
+      subtitleContainer: () => document.querySelector(".player-timedtext"),
+      subtitleText: (container) =>
+        Array.from(container.querySelectorAll(".player-timedtext-text-container span span"))
+          .map((el) => el.textContent.trim())
+          .filter(Boolean)
+          .join(" "),
+      getMetadata: () => {
+        const title =
+          document.querySelector(".video-title h4")?.textContent?.trim() ||
+          document.querySelector('[data-uia="video-title"]')?.textContent?.trim() ||
+          document.title.replace(/ \| Netflix$/, "").trim();
+
+        const supplemental = document.querySelector(
+          ".VideoMetaData__first-supplemental-message, [data-uia='supplemental-message']"
+        )?.textContent;
+        const yearMatch = supplemental?.match(/\b(19|20)\d{2}\b/);
+        const year = yearMatch ? parseInt(yearMatch[0]) : null;
+
+        const seasonEl = document.querySelector("[data-uia='season-number']");
+        const episodeEl = document.querySelector("[data-uia='episode-number']");
+        const episodeTitleEl = document.querySelector("[data-uia='episode-title']");
+        const season = seasonEl ? parseInt(seasonEl.textContent) : null;
+        const episode = episodeEl ? parseInt(episodeEl.textContent) : null;
+        const episode_title = episodeTitleEl?.textContent?.trim() || null;
+
+        return { title, year, season, episode, episode_title };
+      },
+    },
+
+    hbomax: {
+      subtitleContainer: () => document.querySelector('[data-testid="cueBoxRowTextCue"]')?.closest('[class*="RowContainer"]') ||
+        document.querySelector('[data-testid="cueBoxRowTextCue"]')?.parentElement?.parentElement,
+      subtitleText: () =>
+        Array.from(document.querySelectorAll('[data-testid="cueBoxRowTextCue"]'))
+          .map((el) => el.textContent.trim())
+          .filter(Boolean)
+          .join(" "),
+      getMetadata: () => {
+        const title = document.title.replace(/\s*[•·|]\s*(?:HBO\s*Max|Max)\s*/i, "").trim();
+
+        // Parse "S1 E6: Episode Title" from the on-screen label
+        const titleEl = document.querySelector('[class*="title"]')?.textContent || "";
+        const seasonMatch = titleEl.match(/S(\d+)/i);
+        const episodeMatch = titleEl.match(/E(\d+)/i);
+        const episodeTitleMatch = titleEl.match(/:\s*(.+)$/);
+
+        const season = seasonMatch ? parseInt(seasonMatch[1]) : null;
+        const episode = episodeMatch ? parseInt(episodeMatch[1]) : null;
+        const episode_title = episodeTitleMatch ? episodeTitleMatch[1].trim() : null;
+
+        // Year not easily available in HBO Max DOM — pass null
+        return { title, year: null, season, episode, episode_title };
+      },
+    },
+  };
+
+  const config = PLATFORM_CONFIG[PLATFORM];
+  if (!config) {
+    console.log("[BookVsFilm] Unsupported platform:", PLATFORM);
+    return;
+  }
+
   // --- Subtitle collection ---
 
   function startSubtitleObserver() {
-    const observe = () => {
-      const container = document.querySelector(".player-timedtext");
-      if (!container) return;
-      if (subtitleObserver) subtitleObserver.disconnect();
-
+    if (PLATFORM === "hbomax") {
+      // HBO Max: observe body for cue changes since container may re-render
       subtitleObserver = new MutationObserver(() => {
-        const lines = Array.from(
-          container.querySelectorAll(".player-timedtext-text-container span span")
-        )
-          .map((el) => el.textContent.trim())
-          .filter(Boolean)
-          .join(" ");
-
+        const lines = config.subtitleText();
         if (lines) {
           const now = videoEl ? videoEl.currentTime : 0;
-          // Only add if different from the last entry
           const last = subtitleBuffer[subtitleBuffer.length - 1];
           if (!last || last.text !== lines) {
             subtitleBuffer.push({ text: lines, timestamp_seconds: now });
           }
-          // Keep only last SUBTITLE_BUFFER_SECONDS seconds
+          subtitleBuffer = subtitleBuffer.filter(
+            (s) => now - s.timestamp_seconds <= SUBTITLE_BUFFER_SECONDS
+          );
+        }
+      });
+      subtitleObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+      return;
+    }
+
+    // Netflix: watch for specific container
+    const observe = () => {
+      const container = config.subtitleContainer();
+      if (!container) return;
+      if (subtitleObserver) subtitleObserver.disconnect();
+
+      subtitleObserver = new MutationObserver(() => {
+        const lines = config.subtitleText(container);
+        if (lines) {
+          const now = videoEl ? videoEl.currentTime : 0;
+          const last = subtitleBuffer[subtitleBuffer.length - 1];
+          if (!last || last.text !== lines) {
+            subtitleBuffer.push({ text: lines, timestamp_seconds: now });
+          }
           subtitleBuffer = subtitleBuffer.filter(
             (s) => now - s.timestamp_seconds <= SUBTITLE_BUFFER_SECONDS
           );
         }
       });
 
-      subtitleObserver.observe(container, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
+      subtitleObserver.observe(container, { childList: true, subtree: true, characterData: true });
     };
 
-    // Retry until the subtitle container appears
     const interval = setInterval(() => {
-      if (document.querySelector(".player-timedtext")) {
+      if (config.subtitleContainer()) {
         observe();
         clearInterval(interval);
       }
@@ -57,7 +138,7 @@
   function getSubtitleContext() {
     const now = videoEl ? videoEl.currentTime : 0;
     return subtitleBuffer
-      .filter((s) => now - s.timestamp_seconds <= 180)
+      .filter((s) => now - s.timestamp_seconds <= SUBTITLE_BUFFER_SECONDS)
       .map((s) => s.text)
       .join(" ");
   }
@@ -65,38 +146,14 @@
   // --- Metadata extraction ---
 
   function getMetadata() {
-    const title =
-      document.querySelector(".video-title h4")?.textContent?.trim() ||
-      document.querySelector('[data-uia="video-title"]')?.textContent?.trim() ||
-      document.title.replace(" | Netflix", "").trim();
-
-    // Year: look for a 4-digit year in supplemental metadata
-    const supplemental = document.querySelector(
-      ".VideoMetaData__first-supplemental-message, [data-uia='supplemental-message']"
-    )?.textContent;
-    const yearMatch = supplemental?.match(/\b(19|20)\d{2}\b/);
-    const year = yearMatch ? parseInt(yearMatch[0]) : null;
-
-    // Type, season, episode
-    const seasonEl = document.querySelector("[data-uia='season-number']");
-    const episodeEl = document.querySelector("[data-uia='episode-number']");
-    const episodeTitleEl = document.querySelector("[data-uia='episode-title']");
-
-    const season = seasonEl ? parseInt(seasonEl.textContent) : null;
-    const episode = episodeEl ? parseInt(episodeEl.textContent) : null;
-    const episode_title = episodeTitleEl?.textContent?.trim() || null;
-    const type = season !== null ? "series" : "movie";
-
+    const platformMeta = config.getMetadata();
+    const type = platformMeta.season !== null ? "series" : "movie";
     const runtime_seconds = videoEl?.duration || null;
     const timestamp_seconds = videoEl?.currentTime || 0;
 
     return {
-      title,
-      year,
+      ...platformMeta,
       type,
-      season,
-      episode,
-      episode_title,
       runtime_seconds,
       timestamp_seconds,
     };
@@ -141,11 +198,7 @@
       const payload = { ...metadata, subtitle_context };
 
       removeOverlay();
-
-      // Open side panel
       chrome.runtime.sendMessage({ type: "OPEN_SIDE_PANEL" });
-
-      // Send payload to side panel (slight delay for panel to load)
       setTimeout(() => {
         chrome.runtime.sendMessage({ type: "ANALYZE", payload });
       }, 600);
@@ -167,10 +220,7 @@
     videoEl = video;
 
     video.addEventListener("pause", () => {
-      // Don't show overlay if video just ended
-      if (!video.ended) {
-        showOverlay();
-      }
+      if (!video.ended) showOverlay();
     });
 
     video.addEventListener("play", () => {
@@ -183,7 +233,7 @@
     });
   }
 
-  // --- Init: wait for video element to appear ---
+  // --- Init ---
 
   function init() {
     const existing = document.querySelector("video");
