@@ -136,15 +136,6 @@
     });
 
     overlayEl.addEventListener("click", () => {
-      // Check Chrome version supports Side Panel API
-      if (!chrome.sidePanel) {
-        overlayEl.textContent = "⚠️ Please update Chrome to use this extension";
-        overlayEl.style.background = "rgba(180, 60, 60, 0.9)";
-        overlayEl.style.cursor = "default";
-        setTimeout(() => removeOverlay(), 4000);
-        return;
-      }
-
       const metadata = getMetadata();
       const subtitle_context = getSubtitleContext();
       const payload = { ...metadata, subtitle_context };
