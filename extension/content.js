@@ -58,15 +58,18 @@
           .filter(Boolean)
           .join(" "),
       getMetadata: () => {
-        // Try to get series title from "What did you think of [Series]?" prompt
+        // Primary: dedicated asset title element (series name)
+        const assetTitle = document.querySelector('[data-testid="player-ux-asset-title"]')?.textContent?.trim();
+
+        // Fallback: parse from "What did you think of [Series]?" prompt
         const feedbackEl = Array.from(document.querySelectorAll('*')).find(
           el => el.children.length === 0 && el.textContent.includes('What did you think of')
         );
         const feedbackMatch = feedbackEl?.textContent.match(/What did you think of (.+?)\?/);
         const seriesTitle = feedbackMatch ? feedbackMatch[1].trim() : null;
 
-        // Fall back to episode title from document.title if series title not found
-        const title = seriesTitle || document.title.replace(/\s*[•·|]\s*(?:HBO\s*Max|Max)\s*/i, "").trim();
+        // Fall back to episode title from document.title if all else fails
+        const title = assetTitle || seriesTitle || document.title.replace(/\s*[•·|]\s*(?:HBO\s*Max|Max)\s*/i, "").trim();
 
         // Parse "S1 E6: Episode Title" from the on-screen label
         const titleEl = document.querySelector('[class*="title"]')?.textContent || "";
