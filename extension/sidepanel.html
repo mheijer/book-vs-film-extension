@@ -194,6 +194,61 @@
       color: #555;
     }
 
+    /* No book state */
+    .no-book-message {
+      text-align: center;
+      padding: 24px 16px 8px;
+      color: #888;
+      font-size: 14px;
+    }
+
+    .override-form {
+      padding: 12px 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .override-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 2px;
+    }
+
+    .override-form input {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #eee;
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+    }
+
+    .override-form input:focus {
+      border-color: #8b5cf6;
+    }
+
+    .override-form button {
+      background: #8b5cf6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .override-form button:hover {
+      background: #7c3aed;
+    }
+
     /* Two-column film vs book */
     .two-col {
       display: flex;
@@ -232,7 +287,13 @@
     </div>
 
     <div id="no-book" class="hidden">
-      No source book detected for this title.
+      <div class="no-book-message">No source book detected for this title.</div>
+      <div class="override-form">
+        <div class="override-label">Know the source book?</div>
+        <input id="override-title" type="text" placeholder="Book title" />
+        <input id="override-author" type="text" placeholder="Author" />
+        <button id="override-submit">Analyze →</button>
+      </div>
     </div>
 
     <div id="results" class="hidden">

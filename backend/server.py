@@ -262,33 +262,59 @@ def analyze():
     )
     print(f"[DEBUG] OpenSubtitles window: '{full_subtitles[:200] if full_subtitles else 'NONE'}'", flush=True)
 
-    # Step 1: detect book and identify scene
-    detection_prompt = build_detection_prompt(data, full_subtitles)
-    detection_response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=600,
-        messages=[{"role": "user", "content": detection_prompt}]
-    )
-    detection_text = detection_response.content[0].text.strip()
-    if detection_text.startswith("```"):
-        detection_text = detection_text.split("```")[1]
-        if detection_text.startswith("json"):
-            detection_text = detection_text[4:]
-    detection = json.loads(detection_text.strip())
+    # Check for manual override
+    override_book_title = data.get("override_book_title")
+    override_author = data.get("override_author")
 
-    if not detection.get("book_detected"):
-        return jsonify({
-            "book_detected": False,
-            "book_title": None,
-            "author": None,
-            "scene_description": None,
-            "book_passage": None,
-            "key_difference": None,
-            "book_confidence": None,
-            "comparison": None
-        })
+    if override_book_title:
+        # User provided the book — skip detection, generate scene description only
+        detection = {
+            "book_detected": True,
+            "book_title": override_book_title,
+            "author": override_author or "Unknown",
+            "book_confidence": 3,
+            "scene_description": None
+        }
+        # Generate scene description from subtitles + timestamp
+        scene_prompt = f"""Given these subtitles from "{data['title']}" at {data.get('timestamp_seconds', 0)}s into the content:
+"{full_subtitles or live_subtitles or 'No subtitle data'}"
 
-    book_confidence = detection.get("book_confidence", 3)
+Write one sentence describing what is happening in this scene right now."""
+        scene_resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=150,
+            messages=[{"role": "user", "content": scene_prompt}]
+        )
+        detection["scene_description"] = scene_resp.content[0].text.strip()
+        book_confidence = 3
+    else:
+        # Step 1: detect book and identify scene
+        detection_prompt = build_detection_prompt(data, full_subtitles)
+        detection_response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=600,
+            messages=[{"role": "user", "content": detection_prompt}]
+        )
+        detection_text = detection_response.content[0].text.strip()
+        if detection_text.startswith("```"):
+            detection_text = detection_text.split("```")[1]
+            if detection_text.startswith("json"):
+                detection_text = detection_text[4:]
+        detection = json.loads(detection_text.strip())
+
+        if not detection.get("book_detected"):
+            return jsonify({
+                "book_detected": False,
+                "book_title": None,
+                "author": None,
+                "scene_description": None,
+                "book_passage": None,
+                "key_difference": None,
+                "book_confidence": None,
+                "comparison": None
+            })
+
+        book_confidence = detection.get("book_confidence", 3)
 
     # Step 2: compare scene to book
     comparison_prompt = build_comparison_prompt(

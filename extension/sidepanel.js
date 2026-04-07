@@ -120,9 +120,24 @@ async function analyze(payload) {
   }
 }
 
+// Manual override form
+let lastPayload = null;
+
+document.getElementById("override-submit").addEventListener("click", () => {
+  const bookTitle = document.getElementById("override-title").value.trim();
+  const author = document.getElementById("override-author").value.trim();
+  if (!bookTitle || !lastPayload) return;
+  analyze({ ...lastPayload, override_book_title: bookTitle, override_author: author || null });
+});
+
+document.getElementById("override-title").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("override-submit").click();
+});
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "ANALYZE") {
+    lastPayload = message.payload;
     analyze(message.payload);
   }
   if (message.type === "CLOSE_SIDE_PANEL") {
