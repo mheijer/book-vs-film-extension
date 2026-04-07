@@ -1,4 +1,4 @@
-const BACKEND_URL = "http://localhost:5001/analyze";
+const BACKEND_URL = "https://book-vs-film-extension-production.up.railway.app/analyze";
 
 const loadingEl = document.getElementById("loading");
 const noBookEl = document.getElementById("no-book");
