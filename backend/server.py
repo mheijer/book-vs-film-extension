@@ -19,7 +19,7 @@ OPENSUBTITLES_BASE = "https://api.opensubtitles.com/api/v1"
 
 # --- OpenSubtitles helpers ---
 
-def fetch_subtitles_window(title, year, timestamp_seconds, window_seconds=300):
+def fetch_subtitles_window(title, year, timestamp_seconds, window_seconds=300, season=None, episode=None):
     """
     Fetch a subtitle file from OpenSubtitles and return lines within
     window_seconds before and after timestamp_seconds.
@@ -34,14 +34,19 @@ def fetch_subtitles_window(title, year, timestamp_seconds, window_seconds=300):
         "User-Agent": "BookVsFilm/1.0"
     }
 
+    is_series = season is not None and episode is not None
+
     # Search for subtitles
     params = {
         "query": title,
         "languages": "en",
-        "type": "movie",
+        "type": "episode" if is_series else "movie",
     }
     if year:
         params["year"] = year
+    if is_series:
+        params["season_number"] = season
+        params["episode_number"] = episode
 
     try:
         search_resp = requests.get(
@@ -258,7 +263,9 @@ def analyze():
         data.get("title"),
         data.get("year"),
         data.get("timestamp_seconds", 0),
-        window_seconds=300
+        window_seconds=300,
+        season=data.get("season"),
+        episode=data.get("episode")
     )
     print(f"[DEBUG] OpenSubtitles window: '{full_subtitles[:200] if full_subtitles else 'NONE'}'", flush=True)
 
