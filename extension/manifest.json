@@ -4,7 +4,7 @@
   "version": "1.0",
   "minimum_chrome_version": "114",
   "description": "Compare Netflix scenes to their source books using Claude AI.",
-  "permissions": ["sidePanel", "activeTab", "scripting"],
+  "permissions": ["sidePanel", "activeTab"],
   "host_permissions": [
     "https://book-vs-film-extension-production.up.railway.app/*"
   ],
