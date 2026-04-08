@@ -27,8 +27,9 @@
           .filter(Boolean)
           .join(" "),
       getMetadata: () => {
+        const videoTitleEl = document.querySelector(".video-title h4");
         const title =
-          document.querySelector(".video-title h4")?.textContent?.trim() ||
+          (videoTitleEl ? [...videoTitleEl.childNodes].find(n => n.nodeType === Node.TEXT_NODE)?.textContent?.trim() || videoTitleEl.firstElementChild?.textContent?.trim() : null) ||
           document.querySelector('[data-uia="video-title"]')?.textContent?.trim() ||
           document.title.replace(/ \| Netflix$/, "").trim();
 

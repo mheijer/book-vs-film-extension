@@ -115,7 +115,10 @@ async function analyze(payload) {
     renderComparison(data.comparison);
     showState("results");
   } catch (err) {
-    noBookEl.textContent = `Error: ${err.message}. Is the backend running?`;
+    const isNetworkError = err.message.includes("Failed to fetch") || err.message.includes("NetworkError");
+    document.querySelector(".no-book-message").textContent = isNetworkError
+      ? "Connection error — the server may be waking up. Please try again in a moment."
+      : `Something went wrong: ${err.message}`;
     showState("no-book");
   }
 }
