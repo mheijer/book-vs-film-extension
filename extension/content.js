@@ -84,6 +84,7 @@
         return { title, year: null, season, episode, episode_title };
       },
     },
+
   };
 
   const config = PLATFORM_CONFIG[PLATFORM];
@@ -245,9 +246,9 @@
 
   // --- Init ---
 
-  function init() {
+  function attachToVideo() {
     const existing = document.querySelector("video");
-    if (existing) {
+    if (existing && existing !== videoEl) {
       attachVideoListeners(existing);
       startSubtitleObserver();
       return;
@@ -255,7 +256,7 @@
 
     const observer = new MutationObserver(() => {
       const video = document.querySelector("video");
-      if (video) {
+      if (video && video !== videoEl) {
         observer.disconnect();
         attachVideoListeners(video);
         startSubtitleObserver();
@@ -263,6 +264,21 @@
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function init() {
+    attachToVideo();
+
+    // Netflix/HBO Max are SPAs — re-initialize when the URL changes to a watch page
+    let lastUrl = window.location.href;
+    new MutationObserver(() => {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        removeOverlay();
+        subtitleBuffer = [];
+        attachToVideo();
+      }
+    }).observe(document.body, { childList: true, subtree: true });
   }
 
   init();
