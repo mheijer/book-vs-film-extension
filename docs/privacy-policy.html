@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy – Book vs. Film xRay</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 720px;
+      margin: 60px auto;
+      padding: 0 24px;
+      color: #222;
+      line-height: 1.7;
+    }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    h2 { font-size: 18px; margin-top: 36px; }
+    p, li { font-size: 15px; color: #444; }
+    a { color: #8b5cf6; }
+    .updated { font-size: 13px; color: #999; margin-bottom: 32px; }
+  </style>
+</head>
+<body>
+
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: April 7, 2026</p>
+
+  <p>Book vs. Film xRay ("the Extension") is a Chrome browser extension that compares scenes from streaming video content to their source books using AI. This privacy policy explains what data is collected and how it is used.</p>
+
+  <h2>What data we collect</h2>
+  <p>When you pause a video and click "Compare to book?", the Extension collects:</p>
+  <ul>
+    <li>The title and year of the content you are watching</li>
+    <li>Your current playback timestamp and total runtime</li>
+    <li>Season and episode information (for TV series)</li>
+    <li>Subtitle text captured from the player in the minutes around your current timestamp</li>
+  </ul>
+
+  <h2>How we use this data</h2>
+  <p>This data is sent to our backend server solely to generate a comparison between the film/show scene and its source book using the Claude AI API (Anthropic). It is not stored, sold, or shared with any third party beyond what is necessary to produce the analysis.</p>
+
+  <h2>Data storage</h2>
+  <p>We do not store any personal data, viewing history, or analysis results on our servers. Each request is processed in real time and discarded immediately after the response is returned to your browser.</p>
+
+  <h2>Third-party services</h2>
+  <ul>
+    <li><strong>Anthropic Claude API</strong> — used to generate book-to-film comparisons. Subject to <a href="https://www.anthropic.com/legal/privacy" target="_blank">Anthropic's Privacy Policy</a>.</li>
+    <li><strong>OpenSubtitles API</strong> — used to fetch subtitle context around your timestamp. Subject to <a href="https://www.opensubtitles.com/en/privacypolicy" target="_blank">OpenSubtitles' Privacy Policy</a>.</li>
+  </ul>
+
+  <h2>Permissions</h2>
+  <p>The Extension requests the following Chrome permissions:</p>
+  <ul>
+    <li><strong>activeTab</strong> — to read the video player and subtitle elements on the current tab</li>
+    <li><strong>sidePanel</strong> — to display results in Chrome's side panel</li>
+    <li><strong>scripting</strong> — to inject the content script into supported streaming sites</li>
+  </ul>
+  <p>The Extension only activates on Netflix (netflix.com) and HBO Max (max.com). It does not run on any other websites.</p>
+
+  <h2>Children's privacy</h2>
+  <p>The Extension is not directed at children under 13 and does not knowingly collect data from children.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>We may update this policy from time to time. Changes will be reflected by the "Last updated" date above.</p>
+
+  <h2>Contact</h2>
+  <p>For questions about this privacy policy, please open an issue at <a href="https://github.com/mheijer/book-vs-film-extension" target="_blank">github.com/mheijer/book-vs-film-extension</a>.</p>
+
+</body>
+</html>
