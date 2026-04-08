@@ -6,9 +6,6 @@
   "description": "Compare Netflix scenes to their source books using Claude AI.",
   "permissions": ["sidePanel", "activeTab", "scripting"],
   "host_permissions": [
-    "https://*.netflix.com/*",
-    "https://*.hbomax.com/*",
-    "https://*.max.com/*",
     "https://book-vs-film-extension-production.up.railway.app/*"
   ],
   "content_scripts": [
