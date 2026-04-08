@@ -158,7 +158,7 @@ def build_detection_prompt(data, full_subtitle_context):
     timestamp_pct = (data["timestamp_seconds"] / data["runtime_seconds"]) * 100
 
     if full_subtitle_context:
-        subtitle_section = f'Dialogue from ±5 minutes around this moment:\n"""\n{full_subtitle_context}\n"""'
+        subtitle_section = f'Dialogue from ±3 minutes around this moment:\n"""\n{full_subtitle_context}\n"""'
     elif data.get('subtitle_context', '').strip():
         subtitle_section = f'Recent dialogue (last few minutes): "{data["subtitle_context"]}"'
     else:
@@ -199,7 +199,7 @@ Return ONLY a valid JSON object:
 
 def build_comparison_prompt(title, year, book_title, author, scene_description, full_subtitle_context, live_subtitle_context, book_confidence):
     if full_subtitle_context:
-        subtitle_section = f'Dialogue from ±5 minutes around this moment in the film:\n"""\n{full_subtitle_context}\n"""'
+        subtitle_section = f'Dialogue from ±3 minutes around this moment in the film:\n"""\n{full_subtitle_context}\n"""'
     elif live_subtitle_context:
         subtitle_section = f'Dialogue captured from the film: "{live_subtitle_context}"'
     else:
@@ -263,7 +263,7 @@ def analyze():
         data.get("title"),
         data.get("year"),
         data.get("timestamp_seconds", 0),
-        window_seconds=300,
+        window_seconds=180,
         season=data.get("season"),
         episode=data.get("episode")
     )
