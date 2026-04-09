@@ -209,9 +209,9 @@
       const payload = { ...metadata, subtitle_context };
 
       removeOverlay();
-      chrome.runtime.sendMessage({ type: "OPEN_SIDE_PANEL" });
+      try { chrome.runtime.sendMessage({ type: "OPEN_SIDE_PANEL" }); } catch (e) {}
       setTimeout(() => {
-        chrome.runtime.sendMessage({ type: "ANALYZE", payload });
+        try { chrome.runtime.sendMessage({ type: "ANALYZE", payload }); } catch (e) {}
       }, 900);
     });
 
@@ -236,7 +236,7 @@
 
     video.addEventListener("play", () => {
       removeOverlay();
-      chrome.runtime.sendMessage({ type: "CLOSE_SIDE_PANEL" });
+      try { chrome.runtime.sendMessage({ type: "CLOSE_SIDE_PANEL" }); } catch (e) {}
     });
 
     video.addEventListener("ended", () => {
