@@ -212,7 +212,7 @@
       chrome.runtime.sendMessage({ type: "OPEN_SIDE_PANEL" });
       setTimeout(() => {
         chrome.runtime.sendMessage({ type: "ANALYZE", payload });
-      }, 600);
+      }, 900);
     });
 
     document.body.appendChild(overlayEl);

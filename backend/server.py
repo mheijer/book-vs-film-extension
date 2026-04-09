@@ -251,117 +251,132 @@ Return ONLY a valid JSON object:
 }}"""
 
 
+def parse_json_response(text):
+    """Robustly parse a JSON response from Claude, stripping markdown fences if present."""
+    text = text.strip()
+    if text.startswith("```"):
+        parts = text.split("```")
+        # parts[1] is the content between first pair of fences
+        text = parts[1]
+        if text.startswith("json"):
+            text = text[4:]
+    return json.loads(text.strip())
+
+
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    data = request.get_json()
-    live_subtitles = data.get("subtitle_context", "").strip()
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid request"}), 400
 
-    print(f"[DEBUG] Title: {data.get('title')} | Live subtitles: '{live_subtitles[:100] if live_subtitles else 'NONE'}'", flush=True)
+        live_subtitles = data.get("subtitle_context", "").strip()
+        print(f"[DEBUG] Title: {data.get('title')} | Live subtitles: '{live_subtitles[:100] if live_subtitles else 'NONE'}'", flush=True)
 
-    # Fetch full subtitle window from OpenSubtitles
-    full_subtitles = fetch_subtitles_window(
-        data.get("title"),
-        data.get("year"),
-        data.get("timestamp_seconds", 0),
-        window_seconds=180,
-        season=data.get("season"),
-        episode=data.get("episode")
-    )
-    print(f"[DEBUG] OpenSubtitles window: '{full_subtitles[:200] if full_subtitles else 'NONE'}'", flush=True)
+        # Fetch full subtitle window from OpenSubtitles
+        full_subtitles = fetch_subtitles_window(
+            data.get("title"),
+            data.get("year"),
+            data.get("timestamp_seconds", 0),
+            window_seconds=180,
+            season=data.get("season"),
+            episode=data.get("episode")
+        )
+        print(f"[DEBUG] OpenSubtitles window: '{full_subtitles[:200] if full_subtitles else 'NONE'}'", flush=True)
 
-    # Check for manual override
-    override_book_title = data.get("override_book_title")
-    override_author = data.get("override_author")
+        # Check for manual override
+        override_book_title = data.get("override_book_title")
+        override_author = data.get("override_author")
 
-    if override_book_title:
-        # User provided the book — skip detection, generate scene description only
-        detection = {
-            "book_detected": True,
-            "book_title": override_book_title,
-            "author": override_author or "Unknown",
-            "book_confidence": 3,
-            "scene_description": None
-        }
-        # Generate scene description from subtitles + timestamp
-        scene_prompt = f"""Given these subtitles from "{data['title']}" at {data.get('timestamp_seconds', 0)}s into the content:
+        if override_book_title:
+            detection = {
+                "book_detected": True,
+                "book_title": override_book_title,
+                "author": override_author or "Unknown",
+                "book_confidence": 3,
+                "scene_description": None
+            }
+            scene_prompt = f"""Given these subtitles from "{data['title']}" at {data.get('timestamp_seconds', 0)}s into the content:
 "{full_subtitles or live_subtitles or 'No subtitle data'}"
 
 Write one sentence describing what is happening in this scene right now."""
-        scene_resp = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=150,
-            messages=[{"role": "user", "content": scene_prompt}]
+            scene_resp = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=150,
+                messages=[{"role": "user", "content": scene_prompt}]
+            )
+            detection["scene_description"] = scene_resp.content[0].text.strip()
+            book_confidence = 3
+        else:
+            # Step 1: detect book and identify scene
+            detection_prompt = build_detection_prompt(data, full_subtitles)
+            detection_response = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=600,
+                messages=[{"role": "user", "content": detection_prompt}]
+            )
+            try:
+                detection = parse_json_response(detection_response.content[0].text)
+            except (json.JSONDecodeError, IndexError) as e:
+                print(f"[ERROR] Detection JSON parse failed: {e}", flush=True)
+                return jsonify({"error": "Failed to parse book detection response"}), 500
+
+            if not detection.get("book_detected"):
+                return jsonify({
+                    "book_detected": False,
+                    "book_title": None,
+                    "author": None,
+                    "scene_description": None,
+                    "book_passage": None,
+                    "key_difference": None,
+                    "book_confidence": None,
+                    "comparison": None
+                })
+
+            book_confidence = detection.get("book_confidence", 3)
+
+        # Step 2: compare scene to book
+        comparison_prompt = build_comparison_prompt(
+            data["title"],
+            data["year"],
+            detection["book_title"],
+            detection["author"],
+            detection["scene_description"],
+            full_subtitles,
+            live_subtitles,
+            book_confidence
         )
-        detection["scene_description"] = scene_resp.content[0].text.strip()
-        book_confidence = 3
-    else:
-        # Step 1: detect book and identify scene
-        detection_prompt = build_detection_prompt(data, full_subtitles)
-        detection_response = client.messages.create(
+        comparison_response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=600,
-            messages=[{"role": "user", "content": detection_prompt}]
+            max_tokens=1200,
+            messages=[{"role": "user", "content": comparison_prompt}]
         )
-        detection_text = detection_response.content[0].text.strip()
-        if detection_text.startswith("```"):
-            detection_text = detection_text.split("```")[1]
-            if detection_text.startswith("json"):
-                detection_text = detection_text[4:]
-        detection = json.loads(detection_text.strip())
+        try:
+            comparison = parse_json_response(comparison_response.content[0].text)
+        except (json.JSONDecodeError, IndexError) as e:
+            print(f"[ERROR] Comparison JSON parse failed: {e}", flush=True)
+            return jsonify({"error": "Failed to parse comparison response"}), 500
 
-        if not detection.get("book_detected"):
-            return jsonify({
-                "book_detected": False,
-                "book_title": None,
-                "author": None,
-                "scene_description": None,
-                "book_passage": None,
-                "key_difference": None,
-                "book_confidence": None,
-                "comparison": None
-            })
+        return jsonify({
+            "book_detected": True,
+            "book_title": detection["book_title"],
+            "author": detection["author"],
+            "scene_description": detection["scene_description"],
+            "book_passage": comparison.get("book_passage"),
+            "key_difference": comparison.get("key_difference"),
+            "book_confidence": book_confidence,
+            "comparison": {
+                "dialogue": comparison.get("dialogue"),
+                "characters": comparison.get("characters"),
+                "setting": comparison.get("setting"),
+                "timing": comparison.get("timing"),
+                "vibe": comparison.get("vibe")
+            }
+        })
 
-        book_confidence = detection.get("book_confidence", 3)
-
-    # Step 2: compare scene to book
-    comparison_prompt = build_comparison_prompt(
-        data["title"],
-        data["year"],
-        detection["book_title"],
-        detection["author"],
-        detection["scene_description"],
-        full_subtitles,
-        live_subtitles,
-        book_confidence
-    )
-    comparison_response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1200,
-        messages=[{"role": "user", "content": comparison_prompt}]
-    )
-    comparison_text = comparison_response.content[0].text.strip()
-    if comparison_text.startswith("```"):
-        comparison_text = comparison_text.split("```")[1]
-        if comparison_text.startswith("json"):
-            comparison_text = comparison_text[4:]
-    comparison = json.loads(comparison_text.strip())
-
-    return jsonify({
-        "book_detected": True,
-        "book_title": detection["book_title"],
-        "author": detection["author"],
-        "scene_description": detection["scene_description"],
-        "book_passage": comparison["book_passage"],
-        "key_difference": comparison.get("key_difference"),
-        "book_confidence": book_confidence,
-        "comparison": {
-            "dialogue": comparison["dialogue"],
-            "characters": comparison["characters"],
-            "setting": comparison["setting"],
-            "timing": comparison["timing"],
-            "vibe": comparison["vibe"]
-        }
-    })
+    except Exception as e:
+        print(f"[ERROR] Unhandled exception: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

@@ -66,6 +66,7 @@ function renderComparison(comparison) {
 }
 
 async function analyze(payload) {
+  document.getElementById("retry-btn").style.display = "none";
   showState("loading");
 
   const titleStr = payload.title || "Unknown Title";
@@ -117,11 +118,18 @@ async function analyze(payload) {
   } catch (err) {
     const isNetworkError = err.message.includes("Failed to fetch") || err.message.includes("NetworkError");
     document.querySelector(".no-book-message").textContent = isNetworkError
-      ? "Connection error — the server may be waking up. Please try again in a moment."
+      ? "Connection error — the server may be waking up."
       : `Something went wrong: ${err.message}`;
+    document.getElementById("retry-btn").style.display = "block";
     showState("no-book");
   }
 }
+
+// Retry button
+document.getElementById("retry-btn").addEventListener("click", () => {
+  document.getElementById("retry-btn").style.display = "none";
+  if (lastPayload) analyze(lastPayload);
+});
 
 // Manual override form
 let lastPayload = null;
