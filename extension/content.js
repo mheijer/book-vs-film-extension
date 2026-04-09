@@ -231,7 +231,9 @@
     videoEl = video;
 
     video.addEventListener("pause", () => {
-      if (!video.ended) showOverlay();
+      // Only show overlay for real content (> 5 min). Filters out
+      // homepage preview clips and show detail page trailers on all platforms.
+      if (!video.ended && video.duration > 300) showOverlay();
     });
 
     video.addEventListener("play", () => {
