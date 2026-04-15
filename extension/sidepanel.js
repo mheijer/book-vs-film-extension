@@ -49,20 +49,35 @@ function renderComparison(comparison) {
     vibe: "Vibe",
   };
 
-  comparisonRowsEl.innerHTML = dims
-    .map((dim) => {
-      const d = comparison[dim];
-      if (!d) return "";
-      return `
-        <div class="comparison-row">
-          <div class="dim-label">${labels[dim]}</div>
-          <div class="dim-right">
-            <span class="rating-badge ${ratingClass(d.rating)}">${d.rating}</span>
-            <div class="dim-detail">${d.detail}</div>
-          </div>
-        </div>`;
-    })
-    .join("");
+  comparisonRowsEl.innerHTML = "";
+  dims.forEach((dim) => {
+    const d = comparison[dim];
+    if (!d) return;
+
+    const row = document.createElement("div");
+    row.className = "comparison-row";
+
+    const dimLabel = document.createElement("div");
+    dimLabel.className = "dim-label";
+    dimLabel.textContent = labels[dim];
+
+    const dimRight = document.createElement("div");
+    dimRight.className = "dim-right";
+
+    const badge = document.createElement("span");
+    badge.className = `rating-badge ${ratingClass(d.rating)}`;
+    badge.textContent = d.rating;
+
+    const detail = document.createElement("div");
+    detail.className = "dim-detail";
+    detail.textContent = d.detail;
+
+    dimRight.appendChild(badge);
+    dimRight.appendChild(detail);
+    row.appendChild(dimLabel);
+    row.appendChild(dimRight);
+    comparisonRowsEl.appendChild(row);
+  });
 }
 
 async function analyze(payload) {
