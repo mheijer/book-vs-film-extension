@@ -123,7 +123,8 @@ async function analyze(payload) {
     const chapterIndicator = document.getElementById("chapter-indicator");
     const chapterText = document.getElementById("chapter-text");
     if (data.chapter) {
-      chapterText.textContent = data.chapter;
+      const bookLabel = data.book_title ? ` · ${data.book_title}` : "";
+      chapterText.textContent = `${data.chapter}${bookLabel}`;
       chapterIndicator.style.display = "flex";
     } else {
       chapterIndicator.style.display = "none";
