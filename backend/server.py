@@ -164,7 +164,7 @@ def build_detection_prompt(data, full_subtitle_context):
     else:
         subtitle_section = "No subtitle data available."
 
-    return f"""You are identifying whether a Netflix title is based on a published book.
+    return f"""You are identifying whether a film or show is based on a published book.
 
 Title: "{data['title']}" ({data['year']}){season_episode_str}
 Timestamp: {data['timestamp_seconds']}s into the content ({timestamp_pct:.1f}% through runtime)
@@ -197,7 +197,9 @@ Return ONLY a valid JSON object:
 }}"""
 
 
-def build_comparison_prompt(title, year, book_title, author, scene_description, full_subtitle_context, live_subtitle_context, book_confidence):
+def build_comparison_prompt(title, year, book_title, author, book_year, scene_description, full_subtitle_context, live_subtitle_context, book_confidence):
+    book_ref = f'"{book_title}" ({book_year}) by {author}' if book_year else f'"{book_title}" by {author}'
+
     if full_subtitle_context:
         subtitle_section = f'Dialogue from ±3 minutes around this moment in the film:\n"""\n{full_subtitle_context}\n"""'
     elif live_subtitle_context:
@@ -207,11 +209,11 @@ def build_comparison_prompt(title, year, book_title, author, scene_description, 
 
     confidence_instruction = ""
     if book_confidence and book_confidence <= 2:
-        confidence_instruction = "\nIMPORTANT: Your knowledge of this book is limited. Write 'Unknown — insufficient data' rather than guessing."
+        confidence_instruction = "\nIMPORTANT: Your knowledge of this book is limited. For any dimension you can't speak to specifically, write 'Unknown — insufficient data' rather than guessing."
     elif book_confidence and book_confidence >= 4:
-        confidence_instruction = "\nYou know this book well. Be specific — cite actual dialogue, chapter details, and concrete differences. No hedging."
+        confidence_instruction = "\nYou know this book well. Be specific — cite actual character names, dialogue, chapter details, and concrete differences. No hedging."
 
-    return f"""You are comparing the film "{title}" ({year}) to its source novel "{book_title}" by {author}.
+    return f"""You are comparing the film "{title}" ({year}) to its source novel {book_ref}.
 
 What is happening in the film right now:
 {scene_description}
@@ -219,35 +221,40 @@ What is happening in the film right now:
 {subtitle_section}
 {confidence_instruction}
 
-CRITICAL RULES:
-1. Every sentence must refer to something SPECIFIC to "{title}" or "{book_title}". No generic statements about adaptations.
-2. Use the dialogue above as ground truth for what is in the film. Quote it directly where relevant.
-3. If you don't know a specific fact, write "Unknown — insufficient data." Never generalize.
+Step 1 — Recall the book scene:
+Before comparing, identify the specific moment in the novel that corresponds to this scene. Name the chapter or section if you know it. Recall who is present, what is said, and what the emotional stakes are. Hold this in mind for the comparison below.
 
-Compare across exactly 5 dimensions:
-  - dialogue: Quote specific lines from the film's dialogue above vs. what the book says at this moment.
-  - characters: Name every character present in this scene in both versions. Note additions or omissions.
-  - setting: Name the exact location in both versions.
-  - timing: Name the chapter or story beat in the book, and whether the film moved it earlier or later.
-  - vibe: Describe the specific emotional register — what the character feels and how each version conveys it differently.
+Step 2 — Compare across 5 dimensions:
+
+RULES:
+- Every sentence must be specific to "{title}" and {book_ref}. No generic statements about adaptations.
+- Use the dialogue above as ground truth for what is in the film. Quote specific lines where relevant.
+- If you don't know a specific fact, write "Unknown — insufficient data." Never generalize.
+
+Dimensions:
+  - dialogue: Quote or closely paraphrase specific lines from the film's dialogue above, then state what the book says at this exact moment. Note word-for-word changes or invented lines.
+  - characters: Name every character present in this scene in both versions. Call out any additions, omissions, or role changes.
+  - setting: Name the exact location in the film and in the book. Note if it was moved or reimagined.
+  - timing: Name the chapter or story beat in the book this corresponds to. State whether the film moved it earlier, later, or kept it in place.
+  - vibe: Describe the specific emotional register of this moment — what the character(s) feel and how each version conveys it. Point to a concrete technique (e.g. internal monologue vs. visual shorthand).
 
 For each dimension:
   - "rating": exactly one of "Faithful", "Modified", or "Very Different"
   - "detail": one short, specific sentence — no more than 20 words, grounded in this book and film only
 
 Also:
-  - "book_passage": one sentence on what happens at this moment in the novel — focus on how it differs from the film, not general plot.
-  - "key_difference": The single most surprising or dramatic difference — one punchy sentence. Lead with the most unexpected change.
+  - "book_passage": 2-3 sentences describing what happens at this moment in the novel — focus on concrete details (who, what, how) that differ from the film.
+  - "key_difference": The single most surprising or dramatic change between film and book — one punchy sentence. Lead with the most unexpected change.
 
 Return ONLY a valid JSON object:
 {{
-  "book_passage": "specific description with concrete details from the novel",
+  "book_passage": "2-3 sentences with concrete details from the novel at this moment",
   "key_difference": "the single most interesting change — one punchy sentence",
-  "dialogue":   {{ "rating": "Faithful|Modified|Very Different", "detail": "specific 1-2 sentences" }},
-  "characters": {{ "rating": "Faithful|Modified|Very Different", "detail": "specific 1-2 sentences" }},
-  "setting":    {{ "rating": "Faithful|Modified|Very Different", "detail": "specific 1-2 sentences" }},
-  "timing":     {{ "rating": "Faithful|Modified|Very Different", "detail": "specific 1-2 sentences" }},
-  "vibe":       {{ "rating": "Faithful|Modified|Very Different", "detail": "specific 1-2 sentences" }}
+  "dialogue":   {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }},
+  "characters": {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }},
+  "setting":    {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }},
+  "timing":     {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }},
+  "vibe":       {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }}
 }}"""
 
 
@@ -341,6 +348,7 @@ Write one sentence describing what is happening in this scene right now."""
             data["year"],
             detection["book_title"],
             detection["author"],
+            detection.get("book_year"),
             detection["scene_description"],
             full_subtitles,
             live_subtitles,
@@ -348,7 +356,7 @@ Write one sentence describing what is happening in this scene right now."""
         )
         comparison_response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1200,
+            max_tokens=1800,
             messages=[{"role": "user", "content": comparison_prompt}]
         )
         try:
