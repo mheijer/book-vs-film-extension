@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Book vs. Film xRay",
-  "version": "1.0",
+  "version": "1.1",
   "minimum_chrome_version": "114",
   "description": "Compare Netflix and HBO Max scenes to their source books using Claude AI.",
   "permissions": ["sidePanel"],
