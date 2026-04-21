@@ -119,6 +119,16 @@ async function analyze(payload) {
       keyDiffBlock.style.display = "none";
     }
 
+    // Chapter indicator
+    const chapterIndicator = document.getElementById("chapter-indicator");
+    const chapterText = document.getElementById("chapter-text");
+    if (data.chapter) {
+      chapterText.textContent = data.chapter;
+      chapterIndicator.style.display = "flex";
+    } else {
+      chapterIndicator.style.display = "none";
+    }
+
     // Confidence indicator
     const confidence = data.book_confidence || 0;
     const confLabels = { 1: "Guessing", 2: "Limited", 3: "Moderate", 4: "Good", 5: "High" };

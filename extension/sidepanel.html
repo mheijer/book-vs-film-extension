@@ -268,6 +268,30 @@
       flex-shrink: 0;
     }
 
+    /* Chapter indicator */
+    .chapter-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .chapter-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #888;
+    }
+
+    .chapter-badge .chapter-icon {
+      font-size: 11px;
+    }
+
     /* Hidden by default */
     .hidden { display: none; }
   </style>
@@ -304,6 +328,13 @@
       <div id="key-difference-block" class="key-difference" style="display:none">
         <div class="section-label">Key Difference</div>
         <p id="key-difference-text"></p>
+      </div>
+
+      <div id="chapter-indicator" class="chapter-indicator" style="display:none">
+        <div class="chapter-badge">
+          <span class="chapter-icon">📖</span>
+          <span id="chapter-text"></span>
+        </div>
       </div>
 
       <div class="section">

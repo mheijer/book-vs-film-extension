@@ -245,11 +245,13 @@ For each dimension:
 Also:
   - "book_passage": 2-3 sentences describing what happens at this moment in the novel — focus on concrete details (who, what, how) that differ from the film.
   - "key_difference": The single most surprising or dramatic change between film and book — one punchy sentence. Lead with the most unexpected change.
+  - "chapter": The specific chapter(s) in the book this scene corresponds to. Use the format "Chapter 12", "Chapter 12 — [Title]" if the chapter has a title, "Chapters 8–10" if it spans multiple, or null if the scene has no direct book equivalent (i.e. invented for the film).
 
 Return ONLY a valid JSON object:
 {{
   "book_passage": "2-3 sentences with concrete details from the novel at this moment",
   "key_difference": "the single most interesting change — one punchy sentence",
+  "chapter": "Chapter 12" or "Chapters 8–10" or null,
   "dialogue":   {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }},
   "characters": {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }},
   "setting":    {{ "rating": "Faithful|Modified|Very Different", "detail": "one specific sentence, max 20 words" }},
@@ -372,6 +374,7 @@ Write one sentence describing what is happening in this scene right now."""
             "scene_description": detection["scene_description"],
             "book_passage": comparison.get("book_passage"),
             "key_difference": comparison.get("key_difference"),
+            "chapter": comparison.get("chapter"),
             "book_confidence": book_confidence,
             "comparison": {
                 "dialogue": comparison.get("dialogue"),
