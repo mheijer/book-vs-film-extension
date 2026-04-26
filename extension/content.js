@@ -27,10 +27,20 @@
           .filter(Boolean)
           .join(" "),
       getMetadata: () => {
-        const title =
+        // Try multiple selectors in order of reliability
+        const rawTitle =
           document.querySelector('[data-uia="video-title"] h4')?.textContent?.trim() ||
+          document.querySelector('[data-uia="video-title"]')?.textContent?.trim() ||
           document.querySelector(".video-title h4")?.textContent?.trim() ||
-          document.title.replace(/ \| Netflix$/, "").trim();
+          document.querySelector(".watch-title")?.textContent?.trim() ||
+          document.querySelector('h1[class*="title"]')?.textContent?.trim() ||
+          document.querySelector('meta[property="og:title"]')?.content?.replace(/ \| Netflix$/i, "").trim() ||
+          document.title.replace(/ \| Netflix$/i, "").trim();
+
+        // Reject fallback values that aren't real titles
+        const title = (rawTitle && rawTitle.toLowerCase() !== "netflix") ? rawTitle : null;
+
+        console.log("[BookVsFilm] Netflix title extracted:", title);
 
         const supplemental = document.querySelector(
           ".VideoMetaData__first-supplemental-message, [data-uia='supplemental-message']"
